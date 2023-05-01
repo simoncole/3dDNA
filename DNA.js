@@ -26,7 +26,7 @@ const init  = () => {
     document.body.appendChild(renderer.domElement);
 
     const PlaneGeometry = new THREE.PlaneGeometry(100, 100, 100);
-    const PlaneMaterial = new THREE.MeshBasicMaterial({ color: 'rgb(255, 0, 0)', side: THREE.DoubleSide });
+    const PlaneMaterial = new THREE.MeshBasicMaterial({ color: 'rgb(255, 255, 255)', side: THREE.DoubleSide });
     const Plane = new THREE.Mesh(PlaneGeometry, PlaneMaterial);
     Plane.position.x = 0;
     Plane.position.y = 0;
@@ -41,7 +41,7 @@ const init  = () => {
     const rotations = 4;
     
    
-    const addPoints = (points1, points2) => {
+    const addHelixPoints = (points1, points2) => {
         for(let i = 0; i < 200; i++){
             let t = i /200;
             let x = radius * Math.cos(2 * Math.PI * rotations * t);
@@ -57,29 +57,32 @@ const init  = () => {
             points2.push(new THREE.Vector3(x, y, z));
         }
     }
-    addPoints(points1, points2);
+    addHelixPoints(points1, points2);
 
-    //every 10 poiints, add a horizontal cylinder that connects the two helixes
-    const addCylinders = (points1, points2) => {
+    const makeNucleotide = (point1, point2, color) => {
+        const path = new THREE.LineCurve3(point1, point2);
+        const geometry = new THREE.TubeGeometry(path, 64, 0.1, 16, false);
+        const material = new THREE.MeshBasicMaterial({ color: color});
+        const cylinder = new THREE.Mesh(geometry, material);
+        scene.add(cylinder);
+    }
+
+    const addNucleotides = (points1, points2) => {
         for(let i = 0; i < 200; i+=10){
-            console.log(points1[i], points2[i])
             let point1 = points1[i];
-            let oppositePoint = points2[points2.length - (i+1)];
-            let point2 = new THREE.Vector3().lerpVectors(point1, oppositePoint, 0.5);
-            // point2.x += radius * 2;
-            const path = new THREE.LineCurve3(point1, point2);
-            const geometry = new THREE.TubeGeometry(path, 64, 0.1, 16, false);
-            const material = new THREE.MeshBasicMaterial({ color: 'rgb(0, 0, 255)'});
-            const cylinder = new THREE.Mesh(geometry, material);
-            scene.add(cylinder);
+            let point2 = points2[points2.length - (i+1)];
+            let midpoint = new THREE.Vector3().lerpVectors(point1, point2, 0.5);
+            makeNucleotide(point1, midpoint, 'rgb(0, 0, 255)');
+            makeNucleotide(point2, midpoint, 'rgb(0, 255, 255)');
+            
         }
     }
-    addCylinders(points1, points2);
+    addNucleotides(points1, points2);
 
     const createTube = (points) => {
         const curve = new THREE.CatmullRomCurve3(points);
         const curveGeometry = new THREE.TubeGeometry(curve, 64, 0.1, 16, false);
-        const material = new THREE.MeshBasicMaterial({ color:  'rgb(0, 255, 0)'});
+        const material = new THREE.MeshBasicMaterial({ color:  'rgb(115, 147, 179)'});
         const tube = new THREE.Mesh(curveGeometry, material);
         return tube;
     }
