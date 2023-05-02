@@ -91,7 +91,7 @@ const init  = () => {
     const spotLight = makeSpotLight({x: 8, y: 8, z: 8});
     scene.add(spotLight);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
@@ -101,21 +101,22 @@ const init  = () => {
     const points1 = [];
     const points2 = [];
     const radius = 1;
-    const height = 20;
+    const height = sequence.length;
     const rotations = sequence.length / 10;
+    const increments = sequence.length * 10;
 
     let parentDNA = new THREE.Object3D();
    
     const addHelixPoints = (points1, points2, sequence) => {
-        for(let i = 0; i < 200; i++){
-            let t = i /200;
+        for(let i = 0; i < increments; i++){
+            let t = i / increments;
             let x = radius * Math.cos(2 * Math.PI * rotations * t);
             let y = height * t - height / 2;
             let z = radius * Math.sin(2 * Math.PI * rotations * t);
             points1.push(new THREE.Vector3(x, y, z));
         }
-        for(let i = 0; i < 200; i++){
-            let t = i /200;
+        for(let i = 0; i < increments; i++){
+            let t = i / increments;
             let x = -(radius * Math.cos(2 * Math.PI * rotations * t));
             let y = -(height * t - height / 2);
             let z = radius * Math.sin(2 * Math.PI * rotations * t);
@@ -125,12 +126,28 @@ const init  = () => {
     addHelixPoints(points1, points2, sequence);
 
     const addNucleotides = (points1, points2) => {
-        for(let i = 0; i < 200; i+=10){
+        for(let i = 0; i < increments; i+=10){
+            let base = sequence.charAt(i / 10);
+            let oppositeBase;
+            switch(base){
+                case 'A':
+                    oppositeBase = 'T';
+                    break;
+                case 'T':
+                    oppositeBase = 'A';
+                    break;
+                case 'C':
+                    oppositeBase = 'G';
+                    break;
+                case 'G':
+                    oppositeBase = 'C';
+                    break;
+            }
             let point1 = points1[i];
             let point2 = points2[points2.length - (i+1)];
             let midpoint = new THREE.Vector3().lerpVectors(point1, point2, 0.5);
-            makeNucleotide(point1, midpoint, 'rgb(0, 0, 255)');
-            makeNucleotide(point2, midpoint, 'rgb(0, 255, 255)');
+            makeNucleotide(point1, midpoint, nucleotideColors[base]);
+            makeNucleotide(point2, midpoint, nucleotideColors[oppositeBase]);
         }
     }
     const makeNucleotide = (point1, point2, color) => {
@@ -155,7 +172,6 @@ const init  = () => {
     const tube2 = createTube(points2);
     parentDNA.add(tube1, tube2);
     scene.add(parentDNA);
-    // const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
    
 
     lookAtPos = new THREE.Vector3(0, 0, 0);
