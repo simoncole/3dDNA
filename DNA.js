@@ -1,5 +1,6 @@
 
 const init  = () => {
+    const sequence = `GTGGGCAAGGTTCCCAGGCGTTCTATACCTCCCAGCCCTCTTTCCAGGATCTTGTAGGCTGTATCTAGGG`
     const keys = {
         j: false,
         k: false,
@@ -13,35 +14,99 @@ const init  = () => {
         d: false
     };
 
+    const nucleotideColors = {
+        T: 'rgb(177, 37, 190)',
+        A: 'rgb(255, 174, 66)',
+        G: 'rgb(48, 213, 200)',
+        C: 'rgb(100, 32, 29)'
+    }
+
     const speed = 0.1;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.x = 0;
+    camera.position.x = -10;
     camera.position.y = 10;
-    camera.position.z = 0;
+    camera.position.z = 10;
 
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    const PlaneGeometry = new THREE.PlaneGeometry(100, 100, 100);
-    const PlaneMaterial = new THREE.MeshBasicMaterial({ color: 'rgb(255, 255, 255)', side: THREE.DoubleSide });
-    const Plane = new THREE.Mesh(PlaneGeometry, PlaneMaterial);
-    Plane.position.x = 0;
-    Plane.position.y = 0;
-    Plane.position.z = 0;
-    Plane.rotation.x = Math.PI / 2;
-    scene.add(Plane);
+    const textureLoader = new THREE.TextureLoader();
+    const nucleusTexture = textureLoader.load('/threejs/assets/textures/cell-nucleus-illustration.png', () => {
+        
+    }, undefined, (error) => {
+        console.error(error);
+    });
+    const makePlane = () => {
+        const PlaneGeometry = new THREE.PlaneGeometry(100, 100, 100);
+        const PlaneMaterial = new THREE.MeshPhongMaterial({ 
+            color: 'rgb(255, 255, 255)', 
+            side: THREE.DoubleSide,
+            map: nucleusTexture
+        });
+        const Plane = new THREE.Mesh(PlaneGeometry, PlaneMaterial);
+        Plane.position.x = 0;
+        Plane.position.y = 0;
+        Plane.position.z = 0;
+        Plane.rotation.x = Math.PI / 2;
+        Plane.receiveShadow = true;
+        scene.add(Plane);
+    }
+    makePlane(nucleusTexture);
+    const makePointLight = (position) => {
+        const pointLight = new THREE.PointLight(0xffffff, 0.5);
+        pointLight.position.set(position.x, position.y, position.z);
+        const sphere = new THREE.SphereGeometry(0.1, 16, 8);
+        const mesh = new THREE.Mesh(sphere, new THREE.MeshPhongMaterial({ color: 0xffffff }));
+        mesh.position.set(position.x, position.y, position.z);
+        scene.add(mesh);
+        pointLight.visible = false;
+        return pointLight;
+    }
+    const pointLight1 = makePointLight({x: 5, y: 5, z: 5});
+    const pointLight2 = makePointLight({x: -5, y: 5, z: 5});
+    const pointLight3 = makePointLight({x: 5, y: 5, z: -5});
+    const pointLight4 = makePointLight({x: -5, y: 5, z: -5});
+    scene.add(pointLight1, pointLight2, pointLight3, pointLight4);
+
+    const makeSpotLight = (position) => {
+        const spotLight = new THREE.SpotLight(0xffffff, 0.5);
+        spotLight.position.set(position.x, position.y, position.z);
+        spotLight.target.position.set(0, 5, 0);
+        spotLight.angle = Math.PI / 6;
+        spotLight.intensity = 1;
+        spotLight.penumbra = 0.5;
+        spotLight.decay = 2;
+        spotLight.castShadow = true;
+        const cylinder = new THREE.CylinderGeometry(0.3, 0.3, 0.3, 32);
+        cylinder.rotateZ(Math.PI / 2);
+        cylinder.rotateX(Math.PI / 2);
+        const mesh = new THREE.Mesh(cylinder, new THREE.MeshPhongMaterial({ color: 0xffffff }));
+        mesh.position.set(position.x, position.y, position.z);
+        scene.add(mesh);
+        return spotLight;
+    }
+    const spotLight = makeSpotLight({x: 8, y: 8, z: 8});
+    scene.add(spotLight);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight.position.set(5, 5, 10);
+    scene.add(directionalLight);
 
     const points1 = [];
     const points2 = [];
     const radius = 1;
     const height = 20;
-    const rotations = 4;
-    
+    const rotations = sequence.length / 10;
+
+    let parentDNA = new THREE.Object3D();
    
-    const addHelixPoints = (points1, points2) => {
+    const addHelixPoints = (points1, points2, sequence) => {
         for(let i = 0; i < 200; i++){
             let t = i /200;
             let x = radius * Math.cos(2 * Math.PI * rotations * t);
@@ -57,15 +122,7 @@ const init  = () => {
             points2.push(new THREE.Vector3(x, y, z));
         }
     }
-    addHelixPoints(points1, points2);
-
-    const makeNucleotide = (point1, point2, color) => {
-        const path = new THREE.LineCurve3(point1, point2);
-        const geometry = new THREE.TubeGeometry(path, 64, 0.1, 16, false);
-        const material = new THREE.MeshBasicMaterial({ color: color});
-        const cylinder = new THREE.Mesh(geometry, material);
-        scene.add(cylinder);
-    }
+    addHelixPoints(points1, points2, sequence);
 
     const addNucleotides = (points1, points2) => {
         for(let i = 0; i < 200; i+=10){
@@ -74,27 +131,32 @@ const init  = () => {
             let midpoint = new THREE.Vector3().lerpVectors(point1, point2, 0.5);
             makeNucleotide(point1, midpoint, 'rgb(0, 0, 255)');
             makeNucleotide(point2, midpoint, 'rgb(0, 255, 255)');
-            
         }
+    }
+    const makeNucleotide = (point1, point2, color) => {
+        const path = new THREE.LineCurve3(point1, point2);
+        const geometry = new THREE.TubeGeometry(path, 64, 0.1, 16, false);
+        const material = new THREE.MeshPhongMaterial({ color: color});
+        const cylinder = new THREE.Mesh(geometry, material);
+        cylinder.castShadow = true;
+        parentDNA.add(cylinder);
     }
     addNucleotides(points1, points2);
 
     const createTube = (points) => {
         const curve = new THREE.CatmullRomCurve3(points);
         const curveGeometry = new THREE.TubeGeometry(curve, 64, 0.1, 16, false);
-        const material = new THREE.MeshBasicMaterial({ color:  'rgb(115, 147, 179)'});
+        const material = new THREE.MeshPhongMaterial({ color:  'rgb(115, 147, 179)'});
         const tube = new THREE.Mesh(curveGeometry, material);
+        tube.castShadow = true;
         return tube;
     }
     const tube1 = createTube(points1);
     const tube2 = createTube(points2);
-    scene.add(tube1);
-    scene.add(tube2);
-
+    parentDNA.add(tube1, tube2);
+    scene.add(parentDNA);
     // const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    const pointLight1 = new THREE.PointLight(0xffffff, 0.5);
-    pointLight1.position.set(5, 5, 10);
-    scene.add(pointLight1);
+   
 
     lookAtPos = new THREE.Vector3(0, 0, 0);
     camera.lookAt(lookAtPos);
@@ -131,6 +193,15 @@ const init  = () => {
                 break;
             case 'Digit4':
                 pointLight4.visible = !pointLight4.visible;
+                break;
+            case 'Digit5':
+                directionalLight.visible = !directionalLight.visible;
+                break;
+            case 'Digit6':
+                spotLight.visible = !spotLight.visible;
+                break;
+            case 'Digit7':
+                ambientLight.visible = !ambientLight.visible;
                 break;
             case 'KeyW':
                 keys.w = true;
@@ -215,10 +286,12 @@ const init  = () => {
         if(keys.d) {
             lookAtPos.x += speed;
         }
+        parentDNA.rotateY(0.01);
         camera.lookAt(lookAtPos);
         renderer.render(scene, camera)/10;
 
     }
+    renderer.shadowMap.enabled = true;
     animate();
 }
 init()
